@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nidra · Sleep diary</title>
+<meta name="description" content="Track your sleep: tap when you go to bed, tap when you wake up.">
+<meta name="theme-color" content="#0b1028">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nidra">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+:root{--night:#0b1028;--deep:#05071a;--card:#121938;--card2:#1a2252;--line:#262f62;--ink:#ece8f7;--mute:#9ea4cb;--faint:#737aa3;--moon:#f3d89a;--moonink:#3b2b08;--peri:#7781c6;--good:#9ed8bf;--warn:#f2a493;
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif;--sans:Figtree,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--night);-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;color:var(--ink);font:400 16px/1.5 var(--sans);-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+body.locked{overflow:hidden}
+/* a still, sparse star field */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.75;background-size:360px 420px;background-image:
+  radial-gradient(1px 1px at 22px 34px,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 140px 88px,rgba(255,255,255,.5),transparent),
+  radial-gradient(1.5px 1.5px at 262px 42px,rgba(243,216,154,.75),transparent),radial-gradient(1px 1px at 302px 190px,rgba(255,255,255,.45),transparent),
+  radial-gradient(1px 1px at 58px 238px,rgba(255,255,255,.55),transparent),radial-gradient(1px 1px at 192px 302px,rgba(255,255,255,.4),transparent),
+  radial-gradient(1.5px 1.5px at 332px 336px,rgba(255,255,255,.6),transparent),radial-gradient(1px 1px at 102px 372px,rgba(255,255,255,.35),transparent)}
+.app{max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 20px calc(108px + env(safe-area-inset-bottom))}
+h1{font:400 2.6rem/1.05 var(--serif);margin:18px 0 0;letter-spacing:-.01em}
+h2{font:400 1.5rem/1.15 var(--serif);margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--mute);font-size:.88rem}
+.brand{display:inline-flex;align-items:center;gap:9px;font:400 1.3rem var(--serif);color:var(--ink)}
+.cres{display:inline-block;width:18px;height:18px;border-radius:50%;box-shadow:inset -5px 3px 0 0 var(--moon)}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sub{color:var(--mute)}
+
+/* the moon: tap to start sleep */
+.moon{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  width:min(64vw,236px);height:min(64vw,236px);margin:30px auto 22px;border-radius:50%;text-align:center;color:var(--moonink);transition:transform .15s;
+  background:radial-gradient(circle at 70% 64%,rgba(150,110,45,.2) 0 9%,transparent 10%),radial-gradient(circle at 30% 70%,rgba(150,110,45,.15) 0 6%,transparent 7%),
+    radial-gradient(circle at 60% 27%,rgba(150,110,45,.13) 0 5%,transparent 6%),radial-gradient(circle at 36% 32%,#fff6dc 0,#f3d89a 46%,#dcb36b 100%);
+  box-shadow:0 0 0 12px rgba(243,216,154,.05),0 0 0 26px rgba(243,216,154,.03),0 0 90px rgba(243,216,154,.2)}
+.moon b{font:400 2.05rem/1 var(--serif)}
+.moon small{font:500 .84rem var(--sans);color:#5b4515}
+.moon:active{transform:scale(.98)}
+.goalline{text-align:center;margin:0;color:var(--mute);font-size:1.02rem}
+.goalline b{color:var(--ink);font-weight:600}
+.goalsub{text-align:center;color:var(--faint);font-size:.86rem;margin:2px 0 0}
+
+.lastrow{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 12px;width:100%;padding:18px 0;margin-top:26px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.lastrow .l{color:var(--mute);font-size:.9rem}
+.lastrow .d{grid-column:2;grid-row:1/3;align-self:center;font:400 2.1rem/1 var(--serif)}
+.lastrow .s{color:var(--faint);font-size:.9rem}
+.sec{margin-top:26px}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:12px 0 0;border-top:1px solid var(--line)}
+.trio div{padding:12px 0 0}.trio div+div{padding-left:12px;border-left:1px solid var(--line)}
+dt{color:var(--mute);font-size:.8rem}
+dd{margin:3px 0 0;font:400 1.4rem/1.1 var(--serif)}
+.empty{margin-top:26px;padding:22px 18px;border:1px dashed var(--line);border-radius:18px;color:var(--mute);text-align:center}
+.empty b{display:block;color:var(--ink);font:400 1.35rem var(--serif);margin-bottom:4px}
+.inst{display:flex;gap:14px;align-items:flex-start;margin-top:26px;padding:16px 18px;border-radius:18px;background:var(--card)}
+.inst .ic{flex:none;width:36px;height:36px;border-radius:50%;box-shadow:inset -9px 5px 0 0 var(--moon);margin-top:2px}
+.inst b{display:block;font-weight:600}
+.inst p{margin:2px 0 12px;color:var(--mute);font-size:.92rem}
+
+/* buttons and controls */
+.btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 22px;border-radius:999px;background:var(--moon);color:var(--moonink);font:600 1rem var(--sans);text-align:center}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.sm{min-height:38px;padding:0 16px;font-size:.92rem}
+.btn.wide{width:100%;margin-top:18px}
+.linkbtn{all:unset;cursor:pointer;color:var(--mute);font:500 .92rem var(--sans);text-decoration:underline;text-underline-offset:3px;padding:6px 0}
+.linkbtn.danger{color:var(--warn)}
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}.acts .btn{flex:1}
+.row{display:flex;gap:8px}
+.seg{display:inline-flex;background:var(--card);border-radius:999px;padding:3px;border:1px solid var(--line)}
+.seg button{all:unset;cursor:pointer;display:inline-flex;align-items:center;min-height:32px;padding:0 14px;border-radius:999px;font:500 .88rem var(--sans);color:var(--mute)}
+.seg button[aria-checked="true"]{background:var(--card2);color:var(--ink)}
+input[type=text],input[type=datetime-local],textarea{display:block;width:100%;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:#0d1331;border:1px solid var(--line);border-radius:12px;padding:11px 12px;color-scheme:dark}
+input:focus,textarea:focus{outline:none;border-color:var(--moon)}
+textarea{resize:vertical}
+.btn:focus-visible,.linkbtn:focus-visible,.chip:focus-visible,.x:focus-visible,.seg button:focus-visible,.rate button:focus-visible,.tabs button:focus-visible,.lastrow:focus-visible,.hrow:focus-visible,.stepper button:focus-visible{outline:2px solid var(--moon);outline-offset:3px}
+.moon:focus-visible{outline:2px solid var(--moon);outline-offset:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:4px;min-height:38px;padding:0 14px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line);font:500 .9rem var(--sans);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--card2);box-shadow:inset 0 0 0 1.5px var(--moon);color:var(--moon)}
+.chip[aria-checked="true"]{background:var(--card2);box-shadow:inset 0 0 0 1.5px var(--moon);color:var(--moon)}
+.chip.static{cursor:default;padding-right:4px}
+.check{display:flex;align-items:center;gap:10px;min-height:40px;margin:14px 0 0;color:var(--ink);font-size:.95rem;cursor:pointer}
+.check input{width:20px;height:20px;margin:0;accent-color:var(--moon)}
+#aiText{font:400 .78rem/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--mute);white-space:pre;overflow:auto}
+.x{all:unset;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;color:var(--mute);font-size:1.15rem}
+.rate{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.rate button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);text-align:center}
+.rate b{font:400 1.5rem/1 var(--serif)}.rate span{font-size:.7rem;color:var(--mute)}
+.rate button[aria-checked="true"]{background:var(--moon);color:var(--moonink);box-shadow:none}
+.rate button[aria-checked="true"] span{color:var(--moonink)}
+.lbl{display:block;color:var(--mute);font-size:.9rem;margin:20px 0 8px}
+.lbl input{margin-top:6px}
+.opt{color:var(--faint)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.two .lbl{margin-bottom:0}
+.err{color:var(--warn);margin:10px 0 0;font-size:.92rem}
+.hint2{color:var(--faint);font-size:.82rem;margin:8px 0 0}
+
+/* history */
+.month{font:500 .84rem var(--sans);color:var(--faint);margin:24px 0 2px}
+.hrow{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:1px 12px;width:100%;padding:13px 0;border-bottom:1px solid var(--line)}
+.hrow .hd{font-weight:600}
+.hrow .hm{grid-column:2;grid-row:1/3;align-self:center;font:400 1.55rem/1 var(--serif)}
+.hrow .hm.met{color:var(--moon)}
+.hrow .hs{color:var(--mute);font-size:.86rem;overflow-wrap:anywhere}
+
+/* insights */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:18px 0 0}
+.stats div{padding:12px 0;border-top:1px solid var(--line)}
+.stats div:nth-child(odd){padding-right:12px}.stats div:nth-child(even){padding-left:12px;border-left:1px solid var(--line)}
+.stats dd{font-size:1.7rem}
+.panel{margin-top:16px;background:var(--card);border-radius:18px;padding:16px 14px 14px}
+.panel h2{font-size:1.35rem;margin:0 4px 10px}
+.panel .sub{margin:8px 4px 0;font-size:.92rem}
+.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--mute);font-size:.8rem;margin:10px 4px 0}
+.k{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.k.m{background:var(--moon)}.k.p{background:var(--peri)}.k.g{width:16px;height:0;border-top:1px dashed var(--mute);border-radius:0;vertical-align:3px}
+.score{display:flex;align-items:baseline;gap:10px;margin:0 4px}
+.score b{font:400 3.2rem/1 var(--serif);color:var(--moon)}.score span{color:var(--mute)}
+.tags{list-style:none;margin:0;padding:0}
+.tags li{padding:12px 4px;border-top:1px solid var(--line)}.tags li:first-child{border-top:0;padding-top:2px}
+.th{display:flex;justify-content:space-between;gap:10px}.th span{color:var(--faint);font-size:.82rem}
+.tags p{margin:4px 0 0;color:var(--mute);font-size:.92rem}
+.neg{color:var(--warn);font-weight:600}.pos{color:var(--good);font-weight:600}
+.foot{color:var(--faint);font-size:.8rem;margin:10px 4px 0}
+.chart{display:block;width:100%;height:auto;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .ax{fill:var(--faint);font:500 11px var(--sans)}.chart .ax.now{fill:var(--ink)}
+.chart .bar{fill:var(--peri)}.chart .bar.met{fill:var(--moon)}
+.chart .win{fill:var(--peri)}
+.chart .none{fill:var(--line)}
+.chart .goal{stroke:var(--mute);stroke-width:1;stroke-dasharray:3 4}
+.chart .val{fill:var(--mute);font:500 10.5px var(--sans);text-anchor:middle}
+
+/* settings */
+.set{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.set h2{margin-bottom:10px}
+.set>p{margin:0 0 12px;color:var(--mute);font-size:.94rem}
+.stepper{display:flex;align-items:center;gap:16px}
+.stepper button{all:unset;cursor:pointer;width:46px;height:46px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--line);display:grid;place-items:center;font:500 1.5rem var(--sans);color:var(--ink)}
+.stepper output{font:400 2.1rem var(--serif);min-width:4.6em;text-align:center}
+.steps{padding-left:1.3em;margin:14px 0;display:grid;gap:8px;line-height:1.5}
+.steps li::marker{color:var(--moon)}
+.about{color:var(--faint);font-size:.84rem;margin-top:28px}
+
+/* tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--night);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+.tabs>div{display:flex;max-width:520px;margin:0 auto}
+.tabs button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:50px;color:var(--faint);font:500 .74rem var(--sans)}
+.tabs button[aria-current="page"]{color:var(--moon)}
+.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* sheets */
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(2,4,14,.72);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:520px;max-height:calc(100% - 24px);overflow-y:auto;overscroll-behavior:contain;background:var(--card);border:1px solid var(--line);border-bottom:0;border-radius:24px 24px 0 0;padding:24px 20px calc(22px + env(safe-area-inset-bottom));outline:none}
+.sheet h2{font-size:1.9rem}
+.sheet .big{font:400 3.3rem/1 var(--serif);color:var(--moon);margin:14px 0 4px}
+.sheet .sub{margin:0}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom));z-index:60;width:max-content;max-width:min(92vw,480px);background:#e9e4f7;color:#141a3a;padding:12px 16px;border-radius:14px;font-weight:500;font-size:.94rem;line-height:1.4}
+
+/* night screen: as dark and quiet as possible */
+.night{position:fixed;inset:0;z-index:40;background:var(--deep);display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;
+  padding:calc(40px + env(safe-area-inset-top)) 24px calc(34px + env(safe-area-inset-bottom));color:#8f8cb3;-webkit-user-select:none;user-select:none;animation:fade .7s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.ncres{display:block;width:44px;height:44px;margin:0 auto 14px;border-radius:50%;box-shadow:inset -11px 6px 0 0 #b9a372}
+.night p{margin:0}
+.clock{font:400 clamp(4.4rem,24vw,7.5rem)/1 var(--serif);color:#c3bfe0;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.clock small{font:500 1.05rem var(--sans);margin-left:8px;color:#8f8cb3;letter-spacing:0}
+.elapsed{margin-top:14px!important;font-size:1.05rem}
+.hold{all:unset;box-sizing:border-box;cursor:pointer;position:relative;width:136px;height:136px;border-radius:50%;display:grid;place-items:center;background:#0b0f2a;color:#d6d2ef;font:500 .95rem/1.25 var(--sans);text-align:center;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.hold svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.hold circle{fill:none;stroke-width:4}
+.hold .trk{stroke:#232a5c}
+.hold .prog{stroke:var(--moon);stroke-linecap:round;stroke-dasharray:390;stroke-dashoffset:390;transition:stroke-dashoffset .25s ease-out}
+.hold.holding .prog{stroke-dashoffset:0;transition:stroke-dashoffset 1.2s linear}
+.hold:focus-visible{outline:2px solid var(--moon);outline-offset:6px}
+.night .hint{margin-top:12px;font-size:.82rem;color:#6a6890}
+.night .linkbtn{margin-top:10px;color:#77749c}
+@media (max-width:380px){.two{grid-template-columns:minmax(0,1fr)}h1{font-size:2.3rem}}
+@media (prefers-reduced-motion:reduce){.night{animation:none}.moon{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<section class="screen" data-tab="home" aria-labelledby="greet">
+  <header class="top"><span class="brand"><span class="cres" aria-hidden="true"></span>Nidra</span><span id="today"></span></header>
+  <h1 id="greet">Good evening</h1>
+  <button class="moon" id="startBtn"><b>Start sleep</b><small>Tap when you go to bed</small></button>
+  <p class="goalline" id="goalline"></p>
+  <p class="goalsub" id="goalsub"></p>
+  <div id="lastNight"></div>
+  <div id="week"></div>
+  <div id="installCard"></div>
+</section>
+
+<section class="screen" data-tab="history" aria-labelledby="hh" hidden>
+  <div class="head"><h1 id="hh">History</h1><button class="btn sm ghost" id="addNight">Add a night</button></div>
+  <div id="histList"></div>
+</section>
+
+<section class="screen" data-tab="insights" aria-labelledby="ih" hidden>
+  <div class="head"><h1 id="ih">Insights</h1>
+    <div class="seg" role="radiogroup" aria-label="Period"><button role="radio" data-n="7" aria-checked="true">7 days</button><button role="radio" data-n="30" aria-checked="false">30 days</button></div></div>
+  <div id="insBody"></div>
+</section>
+
+<section class="screen" data-tab="settings" aria-labelledby="sh" hidden>
+  <h1 id="sh">Settings</h1>
+  <div class="set"><h2>Sleep goal</h2>
+    <p>How much sleep you want each night. Streaks, sleep debt and the bedtime suggestion use this.</p>
+    <div class="stepper"><button id="goalMinus" aria-label="Less sleep">&minus;</button><output id="goalVal" aria-live="polite"></output><button id="goalPlus" aria-label="More sleep">+</button></div></div>
+  <div class="set"><h2>Tags</h2>
+    <p>The things you can tick in your morning check-in.</p>
+    <div class="chips" id="tagList"></div>
+    <div class="row" style="margin-top:12px"><input type="text" id="tagInput" maxlength="24" placeholder="Late dinner" aria-label="New tag"><button class="btn sm" id="tagAdd">Add</button></div>
+    <p class="err" id="tagErr" role="alert" hidden></p></div>
+  <div class="set"><h2>Backup</h2>
+    <p>Your sleep log is kept only on this phone. Save a backup now and then, and before you change phones.</p>
+    <div class="row"><button class="btn sm" id="exportBtn">Save backup</button><button class="btn sm ghost" id="importBtn">Restore backup</button></div></div>
+  <div class="set"><h2>Export for AI</h2>
+    <p>Copy your sleep log with a ready-made question, then paste it into Claude, ChatGPT or another assistant for an analysis.</p>
+    <button class="btn sm" data-ai>Export for AI</button></div>
+  <div class="set" id="instSec"><h2>Install</h2><div id="instBody"></div></div>
+  <div class="set"><h2>Delete all data</h2>
+    <p>Removes every night, your tags and your goal from this phone. This can't be undone.</p>
+    <button class="btn sm ghost" id="wipe" style="color:var(--warn)">Delete all data</button></div>
+  <p class="about">Nidra keeps everything on this device. Nothing is uploaded.</p>
+</section>
+</div>
+
+<nav class="tabs" aria-label="Main"><div>
+  <button data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>Sleep</button>
+  <button data-tab="history"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>History</button>
+  <button data-tab="insights"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/></svg>Insights</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings</button>
+</div></nav>
+
+<div class="night" id="night" role="dialog" aria-modal="true" aria-label="Sleeping" hidden>
+  <div><span class="ncres" aria-hidden="true"></span><p id="since"></p></div>
+  <div><div class="clock" id="clock"></div><p class="elapsed" id="elapsed"></p></div>
+  <div>
+    <button class="hold" id="hold" aria-describedby="holdHint"><svg viewBox="0 0 132 132" aria-hidden="true"><circle class="trk" cx="66" cy="66" r="62"/><circle class="prog" cx="66" cy="66" r="62"/></svg><span>Hold to<br>wake up</span></button>
+    <p class="hint" id="holdHint">Press and hold until the ring fills</p>
+    <button class="linkbtn" id="discard" hidden>Started by mistake? Discard</button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MIN=6e4,HOUR=36e5,DAY=864e5;
+const DEF_TAGS=["Late coffee","Screen in bed","Exercise","Stress","Alcohol","Late meal","Woke up at night","Nap in the day"];
+const RATE=["Exhausted","Tired","Okay","Rested","Great"];
+
+/* ---------- storage: everything stays on this device ---------- */
+const K={nights:"nidra-nights",active:"nidra-active",set:"nidra-settings",later:"nidra-install-later"};
+const mem={};let warned=false;
+function load(k,def){if(k in mem)return mem[k];try{const v=localStorage.getItem(k);return v==null?def:JSON.parse(v)}catch(e){return def}}
+function store(k,v){
+  mem[k]=v;
+  try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));return true}
+  catch(e){if(!warned){warned=true;toast("This browser won't let Nidra save. Your nights are kept only until you close it.")}return false}
+}
+let persisted=false;
+function persistOnce(){if(persisted)return;persisted=true;try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}
+function getSet(){const s=load(K.set,null)||{};return{goal:typeof s.goal==="number"?s.goal:480,tags:Array.isArray(s.tags)?s.tags.slice():DEF_TAGS.slice()}}
+const setSet=s=>store(K.set,s);
+function getNights(){
+  return (load(K.nights,[])||[]).filter(n=>n&&isFinite(n.start)&&isFinite(n.end)&&n.end>n.start)
+    .map(n=>({id:String(n.id),start:+n.start,end:+n.end,rating:n.rating||null,tags:Array.isArray(n.tags)?n.tags.slice():[],note:n.note||""}))
+    .sort((a,b)=>a.start-b.start);
+}
+const setNights=a=>store(K.nights,a.slice().sort((x,y)=>x.start-y.start));
+const getActive=()=>{const a=load(K.active,null);return a&&isFinite(a.start)?a:null};
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function addNight(n){const a=getNights();a.push(n);setNights(a);persistOnce()}
+function updateNight(id,ch){setNights(getNights().map(n=>n.id===id?Object.assign(n,ch):n))}
+
+/* ---------- time helpers ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const dayKey=ms=>{const d=new Date(ms);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())};
+const keyDate=k=>{const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d,12)};
+function lastDays(n){const out=[],t=new Date();t.setHours(12,0,0,0);for(let i=n-1;i>=0;i--){const x=new Date(t);x.setDate(t.getDate()-i);out.push(dayKey(+x))}return out}
+const minsOfDay=ms=>{const d=new Date(ms);return d.getHours()*60+d.getMinutes()};
+const bedRel=ms=>(minsOfDay(ms)+720)%1440;               /* minutes after noon, so 11 pm and 1 am sit side by side */
+const fmtTime=ms=>new Date(ms).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+const fmtClock=m=>{m=((Math.round(m)%1440)+1440)%1440;return new Date(2000,0,1,Math.floor(m/60),m%60).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})};
+const fmtHour=m=>{m=((m%1440)+1440)%1440;return new Date(2000,0,1,Math.floor(m/60),m%60).toLocaleTimeString([],{hour:"numeric"})};
+const fmtDay=ms=>new Date(ms).toLocaleDateString([],{weekday:"short",day:"numeric",month:"short"});
+function fmtDur(m){m=Math.round(m);const h=Math.floor(m/60),r=m%60;return h?h+" h"+(r?" "+r+" min":""):r+" min"}
+function fmtShort(m){m=Math.round(m);const h=Math.floor(m/60),r=m%60;return h?h+"h"+(r?" "+r+"m":""):r+"m"}
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const sdev=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)*(x-m))))};
+const median=a=>{const s=a.slice().sort((x,y)=>x-y),h=s.length>>1;return s.length%2?s[h]:(s[h-1]+s[h])/2};
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+const toInput=ms=>{const d=new Date(ms);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes())};
+function fromInput(v){const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v||"");return m?new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5]).getTime():null}
+
+/* ---------- nights grouped by the day you woke up ---------- */
+function groups(){
+  const m=new Map();
+  for(const n of getNights()){
+    const k=dayKey(n.end);let g=m.get(k);
+    if(!g){g={day:k,start:n.start,end:n.end,mins:0,rating:null,tags:new Set()};m.set(k,g)}
+    g.start=Math.min(g.start,n.start);g.end=Math.max(g.end,n.end);g.mins+=(n.end-n.start)/MIN;
+    if(n.rating)g.rating=n.rating;n.tags.forEach(t=>g.tags.add(t));
+  }
+  return [...m.values()].sort((a,b)=>a.day<b.day?-1:1);
+}
+const byDay=()=>new Map(groups().map(g=>[g.day,g]));
+const wakeRel=g=>bedRel(g.start)+(g.end-g.start)/MIN;
+const met=(g,goal)=>g.mins>=goal-15;
+
+function weekDebt(){
+  const goal=getSet().goal,by=byDay();let d=0,n=0;
+  lastDays(7).forEach(k=>{const g=by.get(k);if(g){d+=goal-g.mins;n++}});
+  return{debt:Math.max(0,d),n};
+}
+function streaks(){
+  const goal=getSet().goal,by=byDay(),t=new Date();t.setHours(12,0,0,0);
+  if(!by.has(dayKey(+t)))t.setDate(t.getDate()-1);     /* today's night may not have ended yet */
+  let cur=0;
+  for(;;){const g=by.get(dayKey(+t));if(!g||!met(g,goal))break;cur++;t.setDate(t.getDate()-1)}
+  let best=0,run=0,prev=null;
+  for(const g of groups()){
+    const d=keyDate(g.day);
+    if(met(g,goal))run=prev&&run>0&&Math.round((d-prev)/DAY)===1?run+1:1;else run=0;
+    best=Math.max(best,run);prev=d;
+  }
+  return{cur,best:Math.max(best,cur)};
+}
+function consistency(){
+  const by=byDay(),gs=lastDays(14).map(k=>by.get(k)).filter(Boolean);
+  if(gs.length<3)return null;
+  const b=sdev(gs.map(g=>bedRel(g.start))),w=sdev(gs.map(wakeRel));
+  return{score:Math.max(0,Math.min(100,Math.round(100-(b+w)/2))),bed:b,wake:w,n:gs.length};
+}
+const steadyWord=s=>s>=80?"Very steady":s>=60?"Fairly steady":s>=40?"Uneven":"Irregular";
+function bedSuggestion(){
+  const by=byDay(),gs=lastDays(14).map(k=>by.get(k)).filter(Boolean);
+  if(gs.length<3)return null;
+  const wake=(median(gs.map(wakeRel))+720)%1440;
+  return{wake,bed:wake-getSet().goal-15};               /* 15 min to fall asleep */
+}
+function rangeStats(n){
+  const by=byDay(),gs=lastDays(n).map(k=>by.get(k)).filter(Boolean);
+  if(!gs.length)return null;
+  const rated=gs.filter(g=>g.rating);
+  return{n:gs.length,avg:mean(gs.map(g=>g.mins)),rest:rated.length?mean(rated.map(g=>g.rating)):null,
+    bed:mean(gs.map(g=>bedRel(g.start)))+720,wake:mean(gs.map(wakeRel))+720};
+}
+function tagInsights(){
+  const gs=groups(),all=new Set();gs.forEach(g=>g.tags.forEach(t=>all.add(t)));
+  const out=[];
+  all.forEach(tag=>{
+    const w=gs.filter(g=>g.tags.has(tag)),o=gs.filter(g=>!g.tags.has(tag));
+    if(w.length<3||o.length<3)return;
+    const d=mean(w.map(g=>g.mins))-mean(o.map(g=>g.mins));
+    const wr=w.filter(g=>g.rating),or=o.filter(g=>g.rating);
+    const r=wr.length>=3&&or.length>=3?{w:mean(wr.map(g=>g.rating)),o:mean(or.map(g=>g.rating))}:null;
+    out.push({tag,n:w.length,d,r,size:(r?Math.abs(r.w-r.o):0)+Math.abs(d)/60});
+  });
+  return out.sort((a,b)=>b.size-a.size);
+}
+
+/* ---------- charts (drawn here, so they work offline) ---------- */
+function xAxis(keys,x0,bw,y){
+  const n=keys.length;
+  return keys.map((k,i)=>{
+    const d=keyDate(k),cx=(x0+i*bw+bw/2).toFixed(1);
+    const t=n<=7?d.toLocaleDateString([],{weekday:"narrow"}):(i===n-1||(n-1-i)%5===0)?String(d.getDate()):"";
+    return t?`<text x="${cx}" y="${y}" text-anchor="middle" class="ax${i===n-1?" now":""}">${esc(t)}</text>`:"";
+  }).join("");
+}
+function durChart(n,mini){
+  const keys=lastDays(n),by=byDay(),goal=getSet().goal,vals=keys.map(k=>by.has(k)?by.get(k).mins:0);
+  const W=340,Ht=mini?100:190,top=mini?6:14,bot=20,left=mini?2:30,right=4,pw=W-left-right,ph=Ht-top-bot;
+  const maxH=Math.ceil(Math.max(goal+60,...vals.map(v=>v+30))/120)*2,sc=ph/(maxH*60);
+  const y=m=>top+ph-m*sc,bw=pw/n,w=Math.max(3,bw*(n>14?.62:.5));
+  const label=keys.map((k,i)=>fmtDay(+keyDate(k))+" "+(vals[i]?fmtDur(vals[i]):"not tracked")).join(", ");
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${esc("Sleep each night: "+label)}">`;
+  if(!mini)for(let h=2;h<=maxH;h+=2)s+=`<line class="grid" x1="${left}" x2="${W-right}" y1="${y(h*60).toFixed(1)}" y2="${y(h*60).toFixed(1)}"/><text class="ax" x="${left-6}" y="${(y(h*60)+4).toFixed(1)}" text-anchor="end">${h}h</text>`;
+  vals.forEach((v,i)=>{
+    const x=left+i*bw+(bw-w)/2;
+    if(v>0){const yy=y(v);
+      s+=`<rect class="bar${v>=goal-15?" met":""}" x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${w.toFixed(1)}" height="${(top+ph-yy).toFixed(1)}" rx="${Math.min(w/2,5).toFixed(1)}"><title>${esc(fmtDay(+keyDate(keys[i]))+": "+fmtDur(v))}</title></rect>`;
+      if(n<=7&&!mini)s+=`<text class="val" x="${(x+w/2).toFixed(1)}" y="${(yy-6).toFixed(1)}">${fmtShort(v)}</text>`;
+    }else s+=`<circle class="none" cx="${(x+w/2).toFixed(1)}" cy="${top+ph-2}" r="2"/>`;
+  });
+  s+=`<line class="goal" x1="${left}" x2="${W-right}" y1="${y(goal).toFixed(1)}" y2="${y(goal).toFixed(1)}"/>`;
+  return s+xAxis(keys,left,bw,Ht-4)+"</svg>";
+}
+function winChart(n){
+  const keys=lastDays(n),by=byDay(),gs=keys.map(k=>by.get(k)||null),have=gs.filter(Boolean);
+  if(!have.length)return`<p class="sub">No nights in this period.</p>`;
+  let lo=Math.floor(Math.min(...have.map(g=>bedRel(g.start)))/60)*60,hi=Math.ceil(Math.max(...have.map(wakeRel))/60)*60;
+  if(hi-lo<360){lo=Math.floor(((hi+lo)/2-180)/60)*60;hi=lo+360}
+  const W=340,Ht=210,top=8,bot=20,left=46,right=4,pw=W-left-right,ph=Ht-top-bot,bw=pw/n,w=Math.max(3,bw*(n>14?.62:.5));
+  const y=m=>top+(m-lo)/(hi-lo)*ph,step=hi-lo>720?240:120;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${esc("Bedtime and wake-up time for each night")}">`;
+  for(let m=Math.ceil(lo/step)*step;m<=hi;m+=step)s+=`<line class="grid" x1="${left}" x2="${W-right}" y1="${y(m).toFixed(1)}" y2="${y(m).toFixed(1)}"/><text class="ax" x="${left-6}" y="${(y(m)+4).toFixed(1)}" text-anchor="end">${esc(fmtHour(m+720))}</text>`;
+  gs.forEach((g,i)=>{if(!g)return;
+    const x=left+i*bw+(bw-w)/2,y1=y(bedRel(g.start)),y2=y(wakeRel(g));
+    s+=`<rect class="win" x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(2,y2-y1).toFixed(1)}" rx="${Math.min(w/2,5).toFixed(1)}"><title>${esc(fmtDay(+keyDate(keys[i]))+": "+fmtTime(g.start)+" to "+fmtTime(g.end))}</title></rect>`;
+  });
+  return s+xAxis(keys,left,bw,Ht-4)+"</svg>";
+}
+
+/* ---------- screens ---------- */
+let tab="home",range=7,histLimit=40;
+function renderHome(){
+  const now=new Date(),h=now.getHours(),set=getSet(),sug=bedSuggestion();
+  $("greet").textContent=h<4?"Late night":h<12?"Good morning":h<17?"Good afternoon":"Good evening";
+  $("today").textContent=now.toLocaleDateString([],{weekday:"long",day:"numeric",month:"long"});
+  $("goalline").innerHTML=sug?`Aim for bed by <b>${esc(fmtClock(sug.bed))}</b>`:`Your goal is <b>${esc(fmtDur(set.goal))}</b> a night`;
+  $("goalsub").textContent=sug?`${fmtDur(set.goal)} goal · you usually wake at ${fmtClock(sug.wake)}`:"Track 3 nights to get a bedtime suggestion";
+  const ns=getNights(),last=ns[ns.length-1];
+  $("lastNight").innerHTML=last
+    ?`<button class="lastrow" data-edit="${esc(last.id)}"><span class="l">${dayKey(last.end)===dayKey(Date.now())?"Last night":esc(fmtDay(last.end))}</span><span class="d">${esc(fmtDur((last.end-last.start)/MIN))}</span><span class="s">${esc(fmtTime(last.start))} to ${esc(fmtTime(last.end))}${last.rating?" · "+RATE[last.rating-1]:""}</span></button>`
+    :`<div class="empty"><b>No nights yet</b>Tap Start sleep when you go to bed tonight.</div>`;
+  if(!ns.length){$("week").innerHTML="";return}
+  const wd=weekDebt(),st=streaks(),c=consistency();
+  $("week").innerHTML=`<div class="sec"><div class="sechead"><h2>This week</h2><button class="linkbtn" data-go="insights">See insights</button></div>
+    ${durChart(7,true)}
+    <dl class="trio"><div><dt>Sleep debt</dt><dd>${wd.debt<5?"None":esc(fmtShort(wd.debt))}</dd></div>
+      <div><dt>Goal streak</dt><dd>${esc(plural(st.cur,"night"))}</dd></div>
+      <div><dt>Consistency</dt><dd>${c?c.score:"–"}</dd></div></dl></div>`;
+}
+function renderHistory(){
+  const ns=getNights().reverse(),goal=getSet().goal;
+  if(!ns.length){$("histList").innerHTML=`<div class="empty"><b>Your nights will show here</b>Start tracking tonight, or add a past night.</div>`;return}
+  let month="",h="";
+  ns.slice(0,histLimit).forEach(n=>{
+    const m=new Date(n.end).toLocaleDateString([],{month:"long",year:"numeric"}),mins=(n.end-n.start)/MIN;
+    if(m!==month){month=m;h+=`<h2 class="month">${esc(m)}</h2>`}
+    h+=`<button class="hrow" data-edit="${esc(n.id)}"><span class="hd">${esc(fmtDay(n.end))}</span><span class="hm${mins>=goal-15?" met":""}">${esc(fmtDur(mins))}</span>
+      <span class="hs">${esc(fmtTime(n.start))} to ${esc(fmtTime(n.end))}${n.rating?" · "+RATE[n.rating-1]:""}${n.tags.length?" · "+esc(n.tags.join(", ")):""}</span></button>`;
+  });
+  if(ns.length>histLimit)h+=`<button class="btn ghost wide" id="more">Show more</button>`;
+  $("histList").innerHTML=h;
+  if($("more"))$("more").onclick=()=>{histLimit+=40;renderHistory()};
+}
+function renderInsights(){
+  const gs=groups();
+  if(!gs.length){$("insBody").innerHTML=`<div class="empty"><b>Nothing to show yet</b>Your charts and patterns appear after your first few nights.</div>`;return}
+  const goal=getSet().goal,r=rangeStats(range),c=consistency(),st=streaks(),tg=tagInsights();
+  const stats=r?`<dl class="stats">
+      <div><dt>Average sleep</dt><dd>${esc(fmtShort(r.avg))}</dd></div><div><dt>How rested</dt><dd>${r.rest?r.rest.toFixed(1)+" / 5":"–"}</dd></div>
+      <div><dt>Usual bedtime</dt><dd>${esc(fmtClock(r.bed))}</dd></div><div><dt>Usual wake-up</dt><dd>${esc(fmtClock(r.wake))}</dd></div></dl>`
+    :`<p class="sub" style="margin-top:16px">No nights in the last ${range} days.</p>`;
+  const tags=tg.length?`<ul class="tags">${tg.slice(0,6).map(t=>`<li><div class="th"><b>${esc(t.tag)}</b><span>${plural(t.n,"night")}</span></div><p>${
+      t.r?`Rested <span class="${t.r.w<t.r.o?"neg":"pos"}">${t.r.w.toFixed(1)}</span> vs ${t.r.o.toFixed(1)} on other nights. `:""}${
+      Math.abs(t.d)>=5?`<span class="${t.d<0?"neg":"pos"}">${esc(fmtDur(Math.abs(t.d)))} ${t.d<0?"less":"more"}</span> sleep.`:"About the same amount of sleep."}</p></li>`).join("")}</ul>
+      <p class="foot">These are patterns in your own nights, not proof that one thing causes another.</p>`
+    :`<p class="sub">Tick tags in your morning check-in. Once a tag has 3 nights with it and 3 without, its pattern shows here.</p>`;
+  $("insBody").innerHTML=stats+
+    `<section class="panel"><h2>Sleep each night</h2>${durChart(range)}<p class="legend"><span><i class="k m"></i>Met your goal</span><span><i class="k p"></i>Under your goal</span><span><i class="k g"></i>Goal (${esc(fmtDur(goal))})</span></p></section>
+    <section class="panel"><h2>When you slept</h2>${winChart(range)}<p class="sub">Each bar runs from bedtime down to wake-up. Bars that line up mean a steady schedule.</p></section>
+    <section class="panel"><h2>Consistency</h2>${c?`<p class="score"><b>${c.score}</b><span>${steadyWord(c.score)}</span></p><p class="sub">Over your last ${plural(c.n,"night")}, bedtime varied by about ±${Math.round(c.bed)} min and wake-up by about ±${Math.round(c.wake)} min.</p>`
+      :`<p class="sub">Track 3 nights within two weeks to see how steady your schedule is.</p>`}</section>
+    <section class="panel"><h2>Streaks</h2><p class="score"><b>${st.cur}</b><span>${st.cur===1?"night":"nights"} in a row at your goal</span></p><p class="sub">Best streak: ${esc(plural(st.best,"night"))}. A night counts if you sleep within 15 min of your ${esc(fmtDur(goal))} goal.</p></section>
+    <section class="panel"><h2>Patterns from your tags</h2>${tags}</section>
+    <section class="panel"><h2>Get a second opinion</h2><p class="sub">Send your sleep log to Claude or ChatGPT and ask what it notices.</p><p style="margin:12px 4px 0"><button class="btn sm" data-ai>Export for AI</button></p></section>`;
+}
+function renderSettings(){
+  const s=getSet();$("goalVal").textContent=fmtDur(s.goal);
+  $("tagList").innerHTML=s.tags.length?s.tags.map((t,i)=>`<span class="chip static">${esc(t)}<button type="button" class="x" data-del="${i}" aria-label="Remove ${esc(t)}">&times;</button></span>`).join("")
+    :`<p class="sub" style="margin:0">No tags. Add one below.</p>`;
+  renderInstall();
+}
+function renderAll(){renderHome();renderHistory();renderInsights();renderSettings()}
+
+/* ---------- tabs and the Back button ---------- */
+function show(t,push){
+  tab=t;
+  document.querySelectorAll(".screen").forEach(s=>s.hidden=s.dataset.tab!==t);
+  document.querySelectorAll(".tabs button").forEach(b=>{if(b.dataset.tab===t)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  if(push){
+    const st=history.state||{};
+    try{if(t==="home"){if(st.tab&&st.tab!=="home")history.back()}
+      else if(!st.tab||st.tab==="home")history.pushState({tab:t},"");else history.replaceState({tab:t},"")}catch(e){}
+  }
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>show(b.dataset.tab,true));
+addEventListener("popstate",e=>{
+  if(!$("scrim").hidden)return hideSheet();             /* Back closes an open sheet first */
+  show((e.state&&e.state.tab)||"home",false);
+});
+document.addEventListener("click",e=>{
+  const ed=e.target.closest("[data-edit]");if(ed)return editSheet(ed.dataset.edit);
+  const go=e.target.closest("[data-go]");if(go)return show(go.dataset.go,true);
+  if(e.target.closest("[data-ai]"))return aiSheet();
+});
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+  range=+b.dataset.n;document.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-checked",String(x===b)));renderInsights();
+});
+$("addNight").onclick=()=>editSheet(null);
+
+/* ---------- sheets ---------- */
+function openSheet(html){
+  $("sheet").innerHTML=html;
+  if($("scrim").hidden){$("scrim").hidden=false;document.body.classList.add("locked");try{history.pushState(Object.assign({},history.state,{sheet:1}),"")}catch(e){}}
+  $("sheet").scrollTop=0;$("sheet").focus({preventScroll:true});
+}
+function hideSheet(){$("scrim").hidden=true;$("sheet").innerHTML="";document.body.classList.remove("locked")}
+function closeSheet(){hideSheet();if(history.state&&history.state.sheet)history.back()}
+$("scrim").onclick=e=>{if(e.target.id==="scrim")closeSheet()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("scrim").hidden)closeSheet()});
+
+let toastT=null;
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},m.length>60?6500:3200)}
+function savedToast(){toast("Night saved."+(isIOS&&!standalone()?" Add Nidra to your Home Screen so "+(isSafariIOS?"Safari":"this browser")+" doesn't delete it.":""))}
+
+function pickerHTML(n){
+  const tags=[...new Set([...getSet().tags,...n.tags])];
+  return `<p class="lbl" id="rl">How rested do you feel?</p>
+    <div class="rate" role="radiogroup" aria-labelledby="rl">${RATE.map((r,i)=>`<button type="button" role="radio" aria-checked="${n.rating===i+1}" data-r="${i+1}"><b>${i+1}</b><span>${r}</span></button>`).join("")}</div>
+    <p class="lbl" id="tl">Anything that might matter?</p>
+    <div class="chips" role="group" aria-labelledby="tl">${tags.map(t=>`<button type="button" class="chip" aria-pressed="${n.tags.includes(t)}" data-t="${esc(t)}">${esc(t)}</button>`).join("")||`<span class="hint2">Add tags in Settings.</span>`}</div>
+    <label class="lbl" for="note">Note <span class="opt">(optional)</span></label>
+    <textarea id="note" rows="2" maxlength="300" placeholder="Woke up once around 3">${esc(n.note)}</textarea>`;
+}
+function bindPicker(n){
+  const sh=$("sheet");let rating=n.rating||null;const tags=new Set(n.tags);
+  sh.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{const v=+b.dataset.r;rating=rating===v?null:v;sh.querySelectorAll("[data-r]").forEach(x=>x.setAttribute("aria-checked",String(+x.dataset.r===rating)))});
+  sh.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{const t=b.dataset.t;tags.has(t)?tags.delete(t):tags.add(t);b.setAttribute("aria-pressed",String(tags.has(t)))});
+  return()=>({rating,tags:[...tags],note:$("note").value.trim()});
+}
+/* morning check-in, right after you stop */
+function checkin(id){
+  const n=getNights().find(x=>x.id===id);if(!n)return closeSheet();
+  const h=new Date().getHours();
+  openSheet(`<h2>${h>=4&&h<12?"Good morning":"Welcome back"}</h2>
+    <p class="big">${esc(fmtDur((n.end-n.start)/MIN))}</p><p class="sub">${esc(fmtTime(n.start))} to ${esc(fmtTime(n.end))}</p>
+    ${pickerHTML(n)}
+    <div class="acts"><button class="btn" id="ciSave">Save</button><button class="btn ghost" id="ciSkip">Skip</button></div>`);
+  const get=bindPicker(n);
+  $("ciSave").onclick=()=>{updateNight(id,get());closeSheet();renderAll();savedToast()};
+  $("ciSkip").onclick=()=>{closeSheet();renderAll();savedToast()};
+}
+function defaultNight(){
+  const e=new Date();e.setHours(7,0,0,0);if(+e>Date.now())e.setDate(e.getDate()-1);
+  return{start:+e-8*HOUR,end:+e,rating:null,tags:[],note:""};
+}
+/* edit a night, or add one you forgot to track */
+function editSheet(id){
+  const isNew=!id,n=isNew?defaultNight():getNights().find(x=>x.id===id);if(!n)return;
+  openSheet(`<h2>${isNew?"Add a night":"Edit night"}</h2>
+    <div class="two"><label class="lbl">Went to bed<input type="datetime-local" id="eb" value="${toInput(n.start)}"></label>
+      <label class="lbl">Woke up<input type="datetime-local" id="ew" value="${toInput(n.end)}"></label></div>
+    <p class="err" id="eErr" role="alert" hidden></p><p class="hint2" id="eDur"></p>
+    ${pickerHTML(n)}
+    <div class="acts"><button class="btn" id="eSave">${isNew?"Add night":"Save changes"}</button><button class="btn ghost" id="eCancel">Cancel</button></div>
+    ${isNew?"":`<p style="margin:14px 0 0;text-align:center"><button class="linkbtn danger" id="eDel">Delete this night</button></p>`}`);
+  const get=bindPicker(n);
+  const check=()=>{
+    const s=fromInput($("eb").value),e=fromInput($("ew").value);let m="";
+    if(s==null||e==null)m="Enter both times.";else if(e<=s)m="Wake-up time must be after bedtime.";
+    else if(e-s>DAY)m="That's longer than 24 hours. Check the dates.";else if(e>Date.now()+5*MIN)m="Wake-up time can't be in the future.";
+    $("eErr").textContent=m;$("eErr").hidden=!m;$("eDur").textContent=m?"":"Slept "+fmtDur((e-s)/MIN);
+    return m?null:{start:s,end:e};
+  };
+  $("eb").oninput=$("ew").oninput=check;check();
+  $("eSave").onclick=()=>{
+    const t=check();if(!t)return;const v=Object.assign(get(),t);
+    if(isNew)addNight(Object.assign({id:newId()},v));else updateNight(id,v);
+    closeSheet();renderAll();toast(isNew?"Night added.":"Changes saved.");
+  };
+  $("eCancel").onclick=closeSheet;
+  if(!isNew){const d=$("eDel");let armed=false,t=null;
+    d.onclick=()=>{if(!armed){armed=true;d.textContent="Tap again to delete";t=setTimeout(()=>{armed=false;d.textContent="Delete this night"},3000);return}
+      clearTimeout(t);setNights(getNights().filter(x=>x.id!==id));closeSheet();renderAll();toast("Night deleted.")}}
+}
+/* stopped within 15 minutes: keep it or delete it (closing the sheet keeps it) */
+function shortSheet(id){
+  const n=getNights().find(x=>x.id===id);if(!n)return;
+  const m=(n.end-n.start)/MIN;
+  openSheet(`<h2>${m<1?"That was under a minute":"That was only "+esc(fmtDur(m))}</h2><p class="sub" style="margin-top:8px">Keep it as a night, or delete it if you started by mistake.</p>
+    <div class="acts"><button class="btn" id="shKeep">Keep</button><button class="btn ghost" id="shDel">Delete</button></div>`);
+  $("shKeep").onclick=()=>checkin(id);
+  $("shDel").onclick=()=>{setNights(getNights().filter(x=>x.id!==id));closeSheet();renderAll();toast("Deleted.")};
+}
+/* still tracking after 14 hours: probably forgot to stop */
+let forgotShown=false;
+function checkForgot(){const a=getActive();if(a&&!forgotShown&&Date.now()-a.start>14*HOUR){forgotShown=true;forgotSheet(a)}}
+function forgotSheet(a){
+  const end=Math.min(Date.now(),a.start+8*HOUR);
+  openSheet(`<h2>Forgot to stop?</h2>
+    <p class="sub" style="margin-top:8px">Nidra has been tracking since ${esc(fmtTime(a.start))} on ${esc(fmtDay(a.start))}, which is ${esc(fmtDur((Date.now()-a.start)/MIN))}. When did you wake up?</p>
+    <label class="lbl">Woke up<input type="datetime-local" id="fw" value="${toInput(end)}"></label>
+    <p class="err" id="fErr" role="alert" hidden></p>
+    <div class="acts"><button class="btn" id="fSave">Save night</button><button class="btn ghost" id="fKeep">Keep tracking</button></div>
+    <p style="margin:14px 0 0;text-align:center"><button class="linkbtn danger" id="fDrop">Discard this night</button></p>`);
+  $("fSave").onclick=()=>{
+    const e=fromInput($("fw").value);let m="";
+    if(e==null)m="Enter when you woke up.";else if(e<=a.start)m="Wake-up time must be after "+fmtTime(a.start)+".";
+    else if(e-a.start>DAY)m="That's longer than 24 hours. Check the date.";else if(e>Date.now()+5*MIN)m="Wake-up time can't be in the future.";
+    if(m){$("fErr").textContent=m;$("fErr").hidden=false;return}
+    const id=finishNight(a.start,e);hideNight();renderAll();checkin(id);
+  };
+  $("fKeep").onclick=closeSheet;
+  $("fDrop").onclick=()=>{store(K.active,null);hideNight();closeSheet();renderAll();toast("Discarded.")};
+}
+
+/* ---------- sleeping ---------- */
+let tickT=null;
+const themeMeta=document.querySelector('meta[name="theme-color"]');
+function finishNight(s,e){const id=newId();addNight({id,start:s,end:e,rating:null,tags:[],note:""});store(K.active,null);return id}
+function startSleep(){
+  if(!getActive()){store(K.active,{start:Date.now()});persistOnce()}
+  try{navigator.vibrate&&navigator.vibrate(12)}catch(e){}
+  showNight();
+}
+function stopSleep(){
+  const a=getActive();if(!a)return hideNight();
+  const end=Date.now();
+  if(end<=a.start){store(K.active,null);hideNight();renderAll();return toast("The phone's clock changed, so this night couldn't be saved.")}
+  const id=finishNight(a.start,end);hideNight();renderAll();
+  if(end-a.start<15*MIN)shortSheet(id);else checkin(id);
+}
+function showNight(){$("night").hidden=false;document.body.classList.add("locked");themeMeta.content="#05071a";tick();clearInterval(tickT);tickT=setInterval(tick,1000);$("hold").focus({preventScroll:true})}
+function hideNight(){$("night").hidden=true;document.body.classList.remove("locked");themeMeta.content="#0b1028";clearInterval(tickT);tickT=null}
+let lastClock="";
+function tick(){
+  const a=getActive();if(!a)return;
+  const now=new Date(),parts=new Intl.DateTimeFormat([],{hour:"numeric",minute:"2-digit"}).formatToParts(now);
+  const main=parts.filter(p=>p.type!=="dayPeriod").map(p=>p.value).join("").trim(),per=(parts.find(p=>p.type==="dayPeriod")||{}).value||"";
+  const c=main+"|"+per;if(c!==lastClock){lastClock=c;$("clock").innerHTML=esc(main)+(per?`<small>${esc(per)}</small>`:"")}
+  const el=Date.now()-a.start;
+  $("since").textContent="Asleep since "+(dayKey(a.start)===dayKey(+now)||el<12*HOUR?"":fmtDay(a.start)+", ")+fmtTime(a.start);
+  $("elapsed").textContent=el<MIN?"Just started":fmtDur(el/MIN);
+  $("discard").hidden=el>=15*MIN;
+}
+$("startBtn").onclick=startSleep;
+$("discard").onclick=()=>{store(K.active,null);hideNight();renderAll();toast("Discarded.")};
+/* press and hold to stop, so a sleepy tap can't end the night */
+const hold=$("hold");let holdT=null;
+function holdStart(e){if(holdT)return;if(e&&e.cancelable)e.preventDefault();hold.classList.add("holding");
+  holdT=setTimeout(()=>{holdT=null;hold.classList.remove("holding");try{navigator.vibrate&&navigator.vibrate(20)}catch(x){}stopSleep()},1200)}
+function holdEnd(){if(!holdT)return;clearTimeout(holdT);holdT=null;hold.classList.remove("holding")}
+hold.addEventListener("pointerdown",holdStart);
+["pointerup","pointerleave","pointercancel"].forEach(ev=>hold.addEventListener(ev,holdEnd));
+hold.addEventListener("keydown",e=>{if((e.key===" "||e.key==="Enter")&&!e.repeat){e.preventDefault();holdStart()}});
+hold.addEventListener("keyup",e=>{if(e.key===" "||e.key==="Enter")holdEnd()});
+hold.addEventListener("contextmenu",e=>e.preventDefault());
+hold.addEventListener("click",e=>e.preventDefault());
+
+/* ---------- settings ---------- */
+function setGoal(d){const s=getSet();s.goal=Math.max(300,Math.min(720,s.goal+d));setSet(s);renderAll()}
+$("goalMinus").onclick=()=>setGoal(-15);$("goalPlus").onclick=()=>setGoal(15);
+function addTag(){
+  const v=$("tagInput").value.trim().replace(/\s+/g," "),s=getSet(),err=$("tagErr");let m="";
+  if(!v)m="Type a tag first.";else if(s.tags.some(t=>t.toLowerCase()===v.toLowerCase()))m="That tag is already in the list.";else if(s.tags.length>=16)m="You can have up to 16 tags. Remove one first.";
+  err.textContent=m;err.hidden=!m;if(m)return;
+  s.tags.push(v);setSet(s);$("tagInput").value="";renderSettings();
+}
+$("tagAdd").onclick=addTag;
+$("tagInput").onkeydown=e=>{if(e.key==="Enter")addTag()};
+$("tagInput").oninput=()=>{$("tagErr").hidden=true};
+$("tagList").onclick=e=>{const b=e.target.closest("[data-del]");if(!b)return;const s=getSet();s.tags.splice(+b.dataset.del,1);setSet(s);renderSettings()};
+$("exportBtn").onclick=()=>{
+  const data={app:"nidra",version:1,exported:new Date().toISOString(),settings:getSet(),nights:getNights()};
+  const name="nidra-backup-"+dayKey(Date.now())+".json",json=JSON.stringify(data,null,1);
+  let file=null;try{file=new File([json],name,{type:"application/json"})}catch(e){}
+  if(file&&navigator.canShare&&matchMedia("(pointer:coarse)").matches&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:"Nidra backup"}).catch(()=>{});return;     /* phone: Save to Files, Drive, email… */
+  }
+  const u=URL.createObjectURL(file||new Blob([json],{type:"application/json"})),a=document.createElement("a");
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
+  toast("Backup saved to your downloads.");
+};
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=async()=>{
+  const f=$("importFile").files[0];$("importFile").value="";if(!f)return;
+  try{
+    const d=JSON.parse(await new Response(f).text()),arr=Array.isArray(d)?d:d&&d.nights;
+    if(!Array.isArray(arr))throw new Error("not a backup");
+    const have=getNights(),ids=new Set(have.map(n=>n.id));let added=0,skip=0;
+    for(const n of arr){
+      if(!n||!isFinite(n.start)||!isFinite(n.end)||+n.end<=+n.start||n.end-n.start>DAY)continue;
+      const id=String(n.id||newId());
+      if(ids.has(id)||have.some(h=>h.start===+n.start&&h.end===+n.end)){skip++;continue}
+      have.push({id,start:+n.start,end:+n.end,rating:[1,2,3,4,5].includes(n.rating)?n.rating:null,
+        tags:Array.isArray(n.tags)?n.tags.filter(t=>typeof t==="string").map(t=>t.slice(0,24)).slice(0,20):[],note:typeof n.note==="string"?n.note.slice(0,300):""});
+      ids.add(id);added++;
+    }
+    setNights(have);persistOnce();
+    if(d.settings&&Array.isArray(d.settings.tags)){const s=getSet();d.settings.tags.forEach(t=>{if(typeof t==="string"&&s.tags.length<16&&!s.tags.some(x=>x.toLowerCase()===t.toLowerCase()))s.tags.push(t.slice(0,24))});setSet(s)}
+    renderAll();
+    toast(added?"Restored "+plural(added,"night")+"."+(skip?" "+plural(skip,"night")+" were already here.":""):skip?"Nothing new to restore. Those nights are already here.":"That backup has no nights in it.");
+  }catch(e){toast("That file isn't a Nidra backup.")}
+};
+(()=>{const b=$("wipe");let armed=false,t=null;
+  b.onclick=()=>{
+    if(!armed){armed=true;b.textContent="Tap again to delete everything";t=setTimeout(()=>{armed=false;b.textContent="Delete all data"},3500);return}
+    clearTimeout(t);armed=false;b.textContent="Delete all data";
+    Object.values(K).forEach(k=>store(k,null));hideNight();renderAll();toast("All data deleted.");
+  };
+})();
+
+/* ---------- export for AI: a question, a summary and every night as a table ---------- */
+let aiDays=30,aiNotes=true;
+const hm24=ms=>{const d=new Date(ms);return pad(d.getHours())+":"+pad(d.getMinutes())};
+const minTo24=m=>{m=((Math.round(m)%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60)};
+const csvCell=v=>/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+function aiText(days,withNotes){
+  const all=getNights();if(!all.length)return{text:"",n:0};
+  const span=days||Math.min(3650,Math.round((keyDate(dayKey(Date.now()))-keyDate(dayKey(all[0].end)))/DAY)+1);
+  const keys=new Set(lastDays(span)),ns=all.filter(n=>keys.has(dayKey(n.end)));
+  if(!ns.length)return{text:"",n:0};
+  const r=rangeStats(span),c=consistency(),goal=getSet().goal;
+  const rows=ns.map(n=>[dayKey(n.end),new Date(n.end).toLocaleDateString("en-GB",{weekday:"short"}),hm24(n.start),hm24(n.end),((n.end-n.start)/HOUR).toFixed(2),n.rating||"",csvCell(n.tags.join("; "))]
+    .concat(withNotes?[csvCell(n.note.replace(/\s+/g," "))]:[]).join(","));
+  const text=["Here is my sleep log from a sleep-tracking app. Please analyse it and tell me:",
+    "1. The main patterns in how long and when I sleep, including weekdays compared with weekends.",
+    "2. What seems linked to my better and worse nights, based on my ratings and tags.",
+    "3. Three specific, practical changes I could try, starting with the one most likely to help.",
+    "If anything in the data looks like a reason to talk to a doctor, please say so.","",
+    "About the data: times are 24-hour local time. Each row is one sleep, dated by the morning I woke up. \"rested\" is how rested I felt, from 1 (exhausted) to 5 (great); blank means I didn't rate it. Tags are things I noted about that day"+(withNotes?", and notes are my own comments.":"."),"",
+    "My sleep goal: "+fmtDur(goal)+" a night.",
+    "Summary: "+plural(r.n,"night")+" tracked"+(days?" in the last "+days+" days":"")+", average sleep "+fmtDur(r.avg)+", usual bedtime "+minTo24(r.bed)+", usual wake-up "+minTo24(r.wake)
+      +(r.rest?", average rested "+r.rest.toFixed(1)+" out of 5":"")+(c?", consistency score "+c.score+" out of 100 over the last 14 days":"")+".","",
+    "date,day,bedtime,wake_up,hours_slept,rested,tags"+(withNotes?",note":""),...rows].join("\n");
+  return{text,n:ns.length};
+}
+function aiSheet(){
+  if(!getNights().length)return toast("Track a few nights first, then come back here.");
+  openSheet(`<h2>Export for AI</h2>
+    <p class="sub" style="margin-top:8px">Copy your sleep log with a ready-made question, then paste it into Claude, ChatGPT or another assistant.</p>
+    <p class="lbl" id="aiPl">Which nights</p>
+    <div class="chips" role="radiogroup" aria-labelledby="aiPl">${[[30,"Last 30 days"],[90,"Last 90 days"],[0,"All nights"]].map(([v,l])=>`<button type="button" class="chip" role="radio" aria-checked="${v===aiDays}" data-ad="${v}">${l}</button>`).join("")}</div>
+    <label class="check"><input type="checkbox" id="aiNotes"${aiNotes?" checked":""}>Include my notes</label>
+    <label class="lbl" for="aiText">What you'll share</label>
+    <textarea id="aiText" rows="9" wrap="off" readonly></textarea>
+    <p class="hint2" id="aiInfo"></p>
+    <div class="acts"><button class="btn" id="aiCopy">Copy</button>${navigator.share?'<button class="btn ghost" id="aiShare">Share</button>':""}<button class="btn ghost" id="aiFile">Save as file</button></div>`);
+  let cur={text:"",n:0};
+  const upd=()=>{cur=aiText(aiDays,aiNotes);$("aiText").value=cur.text;
+    $("aiInfo").textContent=cur.n?plural(cur.n,"night")+". It includes your bedtimes and wake-up times"+(aiNotes?" and notes":"")+", so share it only with services you trust.":"No nights in this period. Choose a longer one."};
+  $("sheet").querySelectorAll("[data-ad]").forEach(b=>b.onclick=()=>{aiDays=+b.dataset.ad;$("sheet").querySelectorAll("[data-ad]").forEach(x=>x.setAttribute("aria-checked",String(x===b)));upd()});
+  $("aiNotes").onchange=()=>{aiNotes=$("aiNotes").checked;upd()};
+  upd();
+  const ready=()=>{if(!cur.n){toast("No nights in this period. Choose a longer one.");return false}return true};
+  $("aiCopy").onclick=async()=>{
+    if(!ready())return;let done=false;
+    try{await navigator.clipboard.writeText(cur.text);done=true}catch(e){}
+    if(!done)try{const t=$("aiText");t.focus();t.select();done=document.execCommand("copy")}catch(e){}
+    toast(done?"Copied. Paste it into Claude or ChatGPT.":"Couldn't copy here. Select the text in the box and copy it.");
+  };
+  if($("aiShare"))$("aiShare").onclick=()=>{if(ready())navigator.share({title:"My sleep log",text:cur.text}).catch(()=>{})};
+  $("aiFile").onclick=()=>{
+    if(!ready())return;const name="nidra-sleep-log-"+dayKey(Date.now())+".txt";
+    const u=URL.createObjectURL(new Blob([cur.text],{type:"text/plain"})),a=document.createElement("a");
+    a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);
+    toast("Saved. Upload the file to Claude or ChatGPT and ask about your sleep.");
+  };
+}
+
+/* ---------- install ---------- */
+let deferred=null;
+const ua=navigator.userAgent,isIOS=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+const isSafariIOS=isIOS&&/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|GSA\//.test(ua);
+const inApp=/FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Line\/|; wv\)/.test(ua)||(isIOS&&!/Safari\//.test(ua));
+const isAndroid=/Android/i.test(ua);
+const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+function installInfo(){
+  if(standalone())return null;
+  if(inApp)return{t:"Open Nidra in your browser",p:"You opened this inside another app. Open it in Chrome or Safari to install it and keep your sleep log.",acts:""};
+  if(deferred)return{t:"Install Nidra",p:"Opens from your home screen and works without internet.",acts:'<button class="btn sm" data-inst="go">Install</button>'};
+  if(isIOS)return{t:"Keep your sleep log safe",p:(isSafariIOS?"Safari":"This browser")+" may delete it if you don't open Nidra for a week. Add Nidra to your Home Screen.",acts:'<button class="btn sm" data-inst="how">Show me how</button>'};
+  if(isAndroid)return{t:"Install Nidra",p:"Open your browser menu (⋮) and choose Install app or Add to Home screen.",acts:""};
+  return null;
+}
+function renderInstall(){
+  const i=installInfo(),later=+load(K.later,0)||0;
+  $("installCard").innerHTML=i&&Date.now()>later?`<div class="inst"><span class="ic" aria-hidden="true"></span><div><b>${esc(i.t)}</b><p>${esc(i.p)}</p><div class="row">${i.acts}<button class="btn sm ghost" data-inst="later">Not now</button></div></div></div>`:"";
+  $("instBody").innerHTML=standalone()?`<p class="sub" style="margin:0">Nidra is installed on this device.</p>`
+    :i?`<p class="sub" style="margin:0 0 12px">${esc(i.p)}</p>${i.acts?`<div class="row">${i.acts}</div>`:""}`
+    :`<p class="sub" style="margin:0">If your browser can install web apps, you'll find Install in its menu.</p>`;
+}
+function howSheet(){
+  openSheet(`<h2>Add Nidra to your Home Screen</h2>
+    <ol class="steps"><li>Tap <b>Share</b> (the square with an arrow) in ${isSafariIOS?"Safari":"your browser"}. On iOS 26, tap <b>⋯</b> first, then Share.</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>, then open Nidra from your Home Screen.</li></ol>
+    <p class="sub">Nights saved here in the browser don't move into the Home Screen app. If you already have some, tap Save backup in Settings first, then Restore backup inside the app.</p>
+    <div class="acts"><button class="btn" id="howOk">Done</button></div>`);
+  $("howOk").onclick=closeSheet;
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-inst]");if(!b)return;const a=b.dataset.inst;
+  if(a==="go"&&deferred){const d=deferred;deferred=null;d.prompt();try{await d.userChoice}catch(x){}renderInstall()}
+  else if(a==="how")howSheet();
+  else if(a==="later"){store(K.later,Date.now()+14*DAY);renderInstall()}
+});
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;renderInstall()});
+addEventListener("appinstalled",()=>{deferred=null;renderInstall()});
+
+/* ---------- start ---------- */
+document.addEventListener("visibilitychange",()=>{if(document.hidden)return;renderHome();if(!$("night").hidden)tick();checkForgot()});
+function init(){
+  const act=new URLSearchParams(location.search).get("action");
+  try{history.replaceState({tab:"home"},"",location.pathname)}catch(e){}
+  renderAll();
+  if(getActive())showNight();else if(act==="start")startSleep();   /* "Start sleep" shortcut on the app icon */
+  checkForgot();
+}
+init();
+if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+  /* the fonts loaded before the service worker took over, so fetch them once more through it to keep them for offline use */
+  const warmFonts=async()=>{try{
+    const css=document.querySelector('link[href*="fonts.googleapis.com/css2"]').href;if(await caches.match(css))return;
+    const t=await (await fetch(css)).text();
+    await Promise.all([...t.matchAll(/url\((https:[^)]+)\)/g)].map(m=>fetch(m[1]).catch(()=>{})));
+  }catch(e){}};
+  if(navigator.serviceWorker.controller)warmFonts();else navigator.serviceWorker.addEventListener("controllerchange",warmFonts,{once:true});
+}
+})();
+</script>
+</body>
+</html>
